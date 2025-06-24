@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Шахи</title>
+    <script src="https://unpkg.com/chess.js@1.0.0-beta.8/chess.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            color: #333;
+        }
+
+        h1 {
+            color: #4a6741;
+            margin-bottom: 20px;
+        }
+
+        /* Основні контейнери сторінок */
+        .page-section {
+            display: none; /* За замовчуванням приховано, показується JS */
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 90vw;
+            width: 500px;
+            box-sizing: border-box;
+        }
+
+        /* Показати активну секцію */
+        .page-section.active {
+            display: flex;
+        }
+
+        /* Меню */
+        #mainMenu button {
+            padding: 12px 25px;
+            font-size: 1.1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #88b04b;
+            color: white;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        #mainMenu button:hover {
+            background-color: #6a8c60;
+            transform: translateY(-2px);
+        }
+
+        /* Вибір складності */
+        #difficultySelection {
+            text-align: center;
+        }
+
+        #difficultySelection p {
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #4a6741;
+        }
+
+        #difficultySelection button {
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #28a745; /* Зелений */
+            color: white;
+            transition: background-color 0.3s ease;
+            margin: 5px;
+        }
+
+        #difficultySelection button:hover {
+            background-color: #218838;
+        }
+
+        /* Сторінка налаштувань */
+        #settingsPage label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        #settingsPage select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        #settingsPage button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #settingsPage button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Сторінка довідки */
+        #helpPage h2 {
+            color: #4a6741;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        #helpPage ul {
+            list-style-type: disc;
+            margin-left: 20px;
+        }
+        #helpPage li {
+            margin-bottom: 5px;
+        }
+
+        /* Ігровий контейнер */
+        #gameContainer {
+            gap: 20px;
+            width: auto; /* Дозволити вмісту визначати ширину */
+            padding: 0; /* Прибираємо внутрішні відступи контейнера гри */
+            border: none; /* Прибираємо рамку */
+            background-color: transparent; /* Прозорий фон */
+            box-shadow: none; /* Прибираємо тінь */
+            flex-direction: row; /* Для розміщення дошки та панелі інфо поруч */
+            align-items: flex-start; /* Вирівнювання на початок */
+            flex-wrap: wrap; /* Дозволяє переносити елементи на новий рядок на малих екранах */
+            justify-content: center; /* Центрування вмісту */
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(8, 60px);
+            grid-template-rows: repeat(8, 60px);
+            border: 5px solid #4a6741; /* Темно-зелена рамка */
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.2);
+            background-color: #eee;
+            flex-shrink: 0; /* Запобігає зменшенню дошки */
+        }
+
+        .square {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 40px;
+            cursor: pointer;
+            user-select: none;
+            position: relative; /* Для позиціонування фігур */
+        }
+
+        .light {
+            background-color: #f0d9b5; /* Світлі клітинки */
+        }
+
+        .dark {
+            background-color: #b58863; /* Темні клітинки */
+        }
+
+        .selected {
+            background-color: yellow !important;
+            box-shadow: inset 0 0 0 3px #333; /* Додати рамку для виділення */
+        }
+
+        .possible-move {
+            background-color: rgba(0, 255, 0, 0.3) !important;
+        }
+
+        .piece {
+            cursor: grab;
+            font-size: 50px; /* Більший розмір для фігур */
+            line-height: 1; /* Вирівнювання по центру */
+            text-align: center;
+            display: block; /* Забезпечуємо повне використання space */
+            width: 100%;
+            height: 100%;
+            /* Стилі для кольору фігур, як у вихідному файлі */
+        }
+
+        .white-piece {
+            color: white;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        .black-piece {
+            color: black;
+            text-shadow: 1px 1px 2px white;
+        }
+
+        .checked-king {
+            background-color: #e65555 !important; /* Червоний колір для короля під шахом */
+        }
+
+        #gameInfoPanel {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 280px; /* Ширина панелі інформації */
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        #message {
+            margin-bottom: 15px;
+            font-size: 1.2em;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        #moveHistory {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+
+        #moveHistory ul {
+            list-style: decimal;
+            padding-left: 20px;
+            margin: 0;
+        }
+
+        #gameControls {
+            margin-top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        #gameControls button {
+            padding: 10px 15px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+
+        #gameControls button:hover {
+            background-color: #0056b3;
+        }
+
+        #gameControls button#resetGameButton {
+            background-color: #dc3545;
+        }
+
+        #gameControls button#resetGameButton:hover {
+            background-color: #c82333;
+        }
+
+        /* Адаптивний дизайн */
+        @media (max-width: 768px) {
+            #gameContainer {
+                flex-direction: column;
+                align-items: center;
+            }
+            #board {
+                width: 80vw;
+                height: 80vw;
+                max-width: 480px; /* Обмеження для дуже великих мобільних екранів */
+                max-height: 480px;
+                grid-template-columns: repeat(8, 1fr); /* Фіксований розмір клітинок */
+                grid-template-rows: repeat(8, 1fr);
+            }
+            .square {
+                width: auto; /* Дозволити адаптувати розмір */
+                height: auto;
+            }
+            .piece {
+                font-size: 10vw; /* Розмір фігур залежить від ширини екрану */
+                max-font-size: 60px; /* Максимальний розмір фігур */
+            }
+            #gameInfoPanel {
+                width: 90vw;
+                max-width: 480px;
+                margin-top: 20px;
+            }
+            .page-section {
+                width: 90vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Шахи</h1>
+
+    <div id="mainMenu" class="page-section active">
+        <button id="playTwoPlayersBtn">Грати вдвох</button>
+        <button id="playVsBotBtn">Грати з комп'ютером</button>
+        <button id="settingsBtn">Налаштування</button>
+        <button id="helpBtn">Довідка</button>
+    </div>
+
+    <div id="difficultySelection" class="page-section">
+        <p>Виберіть складність комп'ютера:</p>
+        <button data-difficulty="easy">Легкий</button>
+        <button data-difficulty="medium">Середній</button>
+        <button data-difficulty="hard">Складний</button>
+        <button id="backToMainMenuFromDifficulty">Назад до меню</button>
+    </div>
+
+    <div id="settingsPage" class="page-section">
+        <h2>Налаштування</h2>
+        <div>
+            <label for="playerColorSelect">Ваш колір (для гри з комп'ютером):</label>
+            <select id="playerColorSelect">
+                <option value="white">Білі</option>
+                <option value="black">Чорні</option>
+            </select>
+        </div>
+        <button id="saveSettingsBtn">Зберегти налаштування</button>
+        <button id="backToMainMenuFromSettings">Назад до меню</button>
+    </div>
+
+    <div id="helpPage" class="page-section">
+        <h2>Довідка та Правила Гри</h2>
+        <section>
+            <h3>Про гру</h3>
+            <p>Шахи — це логічна настільна гра для двох гравців. Мета гри — поставити мат королю суперника.</p>
+            <h3>Як ходити фігурами</h3>
+            <ul>
+                <li>Клацніть/торкніться на фігуру, яку хочете перемістити.</li>
+                <li>На дошці підсвітяться можливі ходи.</li>
+                <li>Клацніть/торкніться на клітинку, куди хочете зробити хід.</li>
+            </ul>
+            <h3>Основні правила</h3>
+            <p>Ви можете дізнатися більше про правила шахів на спеціалізованих ресурсах. Ця гра реалізує стандартні правила, включаючи рокіровку, взяття на проході та перетворення пішака.</p>
+        </section>
+        <button id="backToMainMenuFromHelp">Назад до меню</button>
+    </div>
+
+    <div id="gameContainer" class="page-section">
+        <div id="board"></div>
+        <div id="gameInfoPanel">
+            <div id="message">Хід білих</div>
+            <div id="moveHistory">
+                <h3>Історія ходів:</h3>
+                <ul id="movesList"></ul>
+            </div>
+            <div id="gameControls">
+                <button id="undoMoveButton">Відмінити хід</button>
+                <button id="resetGameButton">Почати заново</button>
+                <button id="backToMenuFromGame">До меню</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Змінні DOM-елементів ---
+        const mainMenu = document.getElementById('mainMenu');
+        const playTwoPlayersBtn = document.getElementById('playTwoPlayersBtn');
+        const playVsBotBtn = document.getElementById('playVsBotBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const helpBtn = document.getElementById('helpBtn');
+
+        const difficultySelection = document.getElementById('difficultySelection');
+        const difficultyButtons = document.querySelectorAll('#difficultySelection button[data-difficulty]');
+        const backToMainMenuFromDifficulty = document.getElementById('backToMainMenuFromDifficulty');
+
+        const settingsPage = document.getElementById('settingsPage');
+        const playerColorSelect = document.getElementById('playerColorSelect');
+        const saveSettingsBtn = document.getElementById('saveSettingsBtn');
+        const backToMainMenuFromSettings = document.getElementById('backToMainMenuFromSettings');
+
+        const helpPage = document.getElementById('helpPage');
+        const backToMainMenuFromHelp = document.getElementById('backToMainMenuFromHelp');
+
+        const gameContainer = document.getElementById('gameContainer');
+        const boardElement = document.getElementById('board');
+        const messageElement = document.getElementById('message');
+        const movesList = document.getElementById('movesList');
+        const undoMoveButton = document.getElementById('undoMoveButton');
+        const resetGameButton = document.getElementById('resetGameButton');
+        const backToMenuFromGame = document.getElementById('backToMenuFromGame');
+
+        // --- Глобальні змінні гри ---
+        const game = new Chess(); // Створюємо новий екземпляр гри з бібліотеки Chess.js
+        let selectedSquare = null; // Зберігає ID вибраної клітинки (наприклад, 'e2')
+        let gameMode = 'player-vs-player'; // 'player-vs-player' або 'player-vs-bot'
+        let botDifficulty = 'easy'; // 'easy', 'medium', 'hard'
+        let playerColor = 'white'; // Колір гравця для режиму з ботом ('white' або 'black')
+
+        // Карта символів Unicode для шахових фігур
+        const pieceSymbols = {
+            'p': '♟', 'n': '♞', 'b': '♝', 'r': '♜', 'q': '♛', 'k': '♚',
+            'P': '♙', 'N': '♘', 'B': '♗', 'R': '♖', 'Q': '♕', 'K': '♔'
+        };
+
+        // --- Функції керування сторінками ---
+        function showPage(pageElement) {
+            document.querySelectorAll('.page-section').forEach(page => {
+                page.classList.remove('active');
+            });
+            pageElement.classList.add('active');
+        }
+
+        // --- Функції рендерингу та логіки гри ---
+        function renderBoard() {
+            boardElement.innerHTML = ''; // Очищаємо дошку перед рендерингом
+            const boardState = game.board(); // Отримуємо поточний стан дошки від chess.js
+
+            for (let i = 0; i < 8; i++) {
+                for (let j = 0; j < 8; j++) {
+                    const square = document.createElement('div');
+                    const row = 8 - i; // Рядки від 8 до 1
+                    const colChar = String.fromCharCode(97 + j); // Стовпці від 'a' до 'h'
+                    const squareId = colChar + row; // Наприклад, 'a1', 'h8'
+
+                    square.classList.add('square');
+                    square.classList.add((i + j) % 2 === 0 ? 'light' : 'dark');
+                    square.dataset.squareId = squareId; // Зберігаємо ID клітинки в data-атрибуті
+
+                    const piece = boardState[i][j];
+                    if (piece) {
+                        const pieceElement = document.createElement('span');
+                        pieceElement.classList.add('piece');
+                        pieceElement.textContent = pieceSymbols[piece.type.toUpperCase()]; // Символ фігури
+                        pieceElement.classList.add(piece.color === 'w' ? 'white-piece' : 'black-piece'); // Колір фігури
+                        square.appendChild(pieceElement);
+                    }
+                    square.addEventListener('click', handleSquareClick);
+                    boardElement.appendChild(square);
+                }
+            }
+            updateGameInfo(); // Оновлюємо інформацію про гру після рендерингу
+            highlightCheckedKing(); // Підсвічуємо короля під шахом
+        }
+
+        // Обробник кліку на клітинку
+        function handleSquareClick(event) {
+            // Якщо гра закінчена, не дозволяємо ходи
+            if (game.isGameOver()) {
+                return;
+            }
+
+            // Якщо гравець грає з ботом і зараз хід бота, не дозволяємо кліки
+            if (gameMode === 'player-vs-bot' && game.turn() !== (playerColor === 'white' ? 'w' : 'b')) {
+                return;
+            }
+
+            const clickedSquareId = event.currentTarget.dataset.squareId;
+            const pieceAtClickedSquare = game.get(clickedSquareId);
+
+            if (selectedSquare) {
+                // Спроба зробити хід
+                try {
+                    const moveResult = game.move({
+                        from: selectedSquare,
+                        to: clickedSquareId,
+                        promotion: 'q' // Автоматична промоція в ферзя за замовчуванням
+                    });
+
+                    if (moveResult) {
+                        // Хід успішний
+                        renderBoard();
+                        clearHighlights();
+                        selectedSquare = null;
+
+                        // Якщо гра з ботом і хід гравця був успішним, хід бота
+                        if (gameMode === 'player-vs-bot' && !game.isGameOver()) {
+                            setTimeout(makeBotMove, 500); // Невеликий таймаут для візуального ефекту
+                        }
+                    } else {
+                        // Недопустимий хід, можливо, переобрали фігуру
+                        if (pieceAtClickedSquare && pieceAtClickedSquare.color === game.turn()) {
+                            // Переобрали свою фігуру
+                            selectedSquare = clickedSquareId;
+                            clearHighlights();
+                            highlightPossibleMoves(selectedSquare);
+                        } else {
+                            // Просто невірний хід
+                            clearHighlights();
+                            selectedSquare = null;
+                        }
+                    }
+                } catch (e) {
+                    console.error('Помилка ходу:', e);
+                    clearHighlights();
+                    selectedSquare = null;
+                }
+            } else {
+                // Вибрали першу клітинку з фігурою
+                if (pieceAtClickedSquare && pieceAtClickedSquare.color === game.turn()) {
+                    selectedSquare = clickedSquareId;
+                    highlightPossibleMoves(selectedSquare);
+                }
+            }
+        }
+
+        // Підсвічування можливих ходів
+        function highlightPossibleMoves(squareId) {
+            clearHighlights(); // Скинути попередні підсвічування
+            document.querySelector(`.square[data-squareId="${squareId}"]`).classList.add('selected'); // Підсвітити вибрану фігуру
+
+            const moves = game.moves({ square: squareId, verbose: true });
+            moves.forEach(move => {
+                const targetSquare = document.querySelector(`.square[data-squareId="${move.to}"]`);
+                if (targetSquare) {
+                    targetSquare.classList.add('possible-move');
+                }
+            });
+        }
+
+        // Очищення підсвічування
+        function clearHighlights() {
+            document.querySelectorAll('.square').forEach(square => {
+                square.classList.remove('selected', 'possible-move', 'checked-king');
+            });
+        }
+
+        // Оновлення інформації про гру (повідомлення, історія ходів)
+        function updateGameInfo() {
+            let status = '';
+            if (game.isCheckmate()) {
+                status = `Мат! Перемогли ${game.turn() === 'w' ? 'Чорні' : 'Білі'}!`;
+            } else if (game.isDraw()) {
+                status = 'Нічия!';
+            } else if (game.isStalemate()) {
+                status = 'Пат! Нічия.';
+            } else if (game.isThreefoldRepetition()) {
+                status = 'Нічия за правилом трьох повторень.';
+            } else if (game.isInsufficientMaterial()) {
+                status = 'Нічия через недостатність матеріалу.';
+            } else if (game.inCheck()) {
+                status = `Шах! Хід ${game.turn() === 'w' ? 'Білих' : 'Чорних'}`;
+            } else {
+                status = `Хід ${game.turn() === 'w' ? 'Білих' : 'Чорних'}`;
+            }
+            messageElement.textContent = status;
+
+            // Оновлення історії ходів
+            movesList.innerHTML = '';
+            const history = game.history({ verbose: true });
+            history.forEach((move, index) => {
+                const moveItem = document.createElement('li');
+                const moveNumber = Math.ceil((index + 1) / 2);
+                const playerTurn = (index % 2 === 0) ? `Хід ${moveNumber}. Білі: ` : `Чорні: `;
+                moveItem.textContent = `${playerTurn}${move.from}-${move.to} (${move.san})`;
+                movesList.appendChild(moveItem);
+            });
+            movesList.scrollTop = movesList.scrollHeight; // Прокрутка до останнього ходу
+        }
+
+        // Підсвічування короля під шахом
+        function highlightCheckedKing() {
+            if (game.inCheck()) {
+                const kingColor = game.turn();
+                const boardState = game.board();
+                for (let r = 0; r < 8; r++) {
+                    for (let c = 0; c < 8; c++) {
+                        const piece = boardState[r][c];
+                        if (piece && piece.type === 'k' && piece.color === kingColor) {
+                            const kingSquareId = String.fromCharCode(97 + c) + (8 - r);
+                            document.querySelector(`.square[data-squareId="${kingSquareId}"]`).classList.add('checked-king');
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Логіка бота ---
+        function makeBotMove() {
+            if (game.isGameOver()) {
+                return;
+            }
+
+            const botColor = playerColor === 'white' ? 'b' : 'w';
+            if (game.turn() !== botColor) {
+                return; // Не хід бота
+            }
+
+            const possibleMoves = game.moves({ verbose: true });
+            if (possibleMoves.length === 0) {
+                return; // Немає можливих ходів
+            }
+
+            let chosenMove = null;
+
+            switch (botDifficulty) {
+                case 'easy':
+                    // Легкий: Випадковий дозволений хід
+                    chosenMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+                    break;
+                case 'medium':
+                    // Середній: Вибираємо хід, який захоплює фігуру, якщо є, інакше - випадковий, або з легким покращенням позиції
+                    chosenMove = findBestMove(game, possibleMoves, 1); // Перевіряємо на 1 хід вперед
+                    break;
+                case 'hard':
+                    // Складний: МініМакс алгоритм з обмеженою глибиною
+                    chosenMove = findBestMove(game, possibleMoves, 2); // Глибина 2
+                    break;
+            }
+
+            if (chosenMove) {
+                game.move(chosenMove);
+                renderBoard();
+                clearHighlights();
+            }
+        }
+
+        // Функція оцінки позиції (чим більше, тим краще для поточного гравця)
+        function evaluateBoard(board) {
+            let score = 0;
+            const pieceValues = { 'p': 100, 'n': 320, 'b': 330, 'r': 500, 'q': 900, 'k': 0 }; // Король має 0, бо його цінність - це мат
+
+            board.forEach(row => {
+                row.forEach(piece => {
+                    if (piece) {
+                        const value = pieceValues[piece.type];
+                        if (piece.color === 'w') {
+                            score += value;
+                        } else {
+                            score -= value;
+                        }
+                    }
+                });
+            });
+            return score;
+        }
+
+        // МініМакс алгоритм (спрощений)
+        function minimax(board, depth, isMaximizingPlayer, alpha, beta) {
+            if (depth === 0 || board.isGameOver()) {
+                return evaluateBoard(board);
+            }
+
+            const possibleMoves = board.moves({ verbose: true });
+            // Sort moves to make alpha-beta pruning more effective
+            // Simple sort: capture moves first
+            possibleMoves.sort((a, b) => {
+                const aCapture = a.flags.includes('c') ? 1 : 0;
+                const bCapture = b.flags.includes('c') ? 1 : 0;
+                return bCapture - aCapture;
+            });
+
+
+            if (isMaximizingPlayer) {
+                let maxEval = -Infinity;
+                for (let i = 0; i < possibleMoves.length; i++) {
+                    board.move(possibleMoves[i]);
+                    let evaluation = minimax(board, depth - 1, false, alpha, beta);
+                    board.undo(); // Важливо: відмінити хід!
+                    maxEval = Math.max(maxEval, evaluation);
+                    alpha = Math.max(alpha, evaluation);
+                    if (beta <= alpha) {
+                        break;
+                    }
+                }
+                return maxEval;
+            } else {
+                let minEval = Infinity;
+                for (let i = 0; i < possibleMoves.length; i++) {
+                    board.move(possibleMoves[i]);
+                    let evaluation = minimax(board, depth - 1, true, alpha, beta);
+                    board.undo(); // Важливо: відмінити хід!
+                    minEval = Math.min(minEval, evaluation);
+                    beta = Math.min(beta, evaluation);
+                    if (beta <= alpha) {
+                        break;
+                    }
+                }
+                return minEval;
+            }
+        }
+
+        // Знайти найкращий хід для бота
+        function findBestMove(gameInstance, possibleMoves, depth) {
+            let bestMove = null;
+            let bestValue = -Infinity;
+            const botColor = gameInstance.turn();
+
+            // Оцінка для бота: якщо бот чорний, він мінімізує score
+            // якщо бот білий, він максимізує score
+            let alpha = -Infinity;
+            let beta = Infinity;
+
+            // Сортуємо ходи, щоб пришвидшити відсічення (простіший спосіб: захоплення спочатку)
+            possibleMoves.sort((a, b) => {
+                const aCapture = a.flags.includes('c') ? 1 : 0;
+                const bCapture = b.flags.includes('c') ? 1 : 0;
+                return bCapture - aCapture; // Приоритет захоплень
+            });
+
+
+            for (let i = 0; i < possibleMoves.length; i++) {
+                const move = possibleMoves[i];
+                gameInstance.move(move);
+                const boardValue = minimax(gameInstance, depth - 1, botColor === 'b', alpha, beta); // Якщо бот чорний, він мінімізує
+                gameInstance.undo(); // Відміняємо хід, щоб перевірити наступний
+
+                if (botColor === 'w') { // Якщо бот білий, він максимізує
+                    if (boardValue > bestValue) {
+                        bestValue = boardValue;
+                        bestMove = move;
+                    }
+                    alpha = Math.max(alpha, bestValue);
+                } else { // Якщо бот чорний, він мінімізує
+                    if (boardValue < bestValue) { // Для чорних ми шукаємо мінімальне значення
+                        bestValue = boardValue;
+                        bestMove = move;
+                    }
+                    beta = Math.min(beta, bestValue);
+                }
+
+                if (beta <= alpha) {
+                    break;
+                }
+            }
+            return bestMove;
+        }
+
+        // --- Ініціалізація та обробники подій ---
+        function initializeGame() {
+            game.reset(); // Скидаємо гру в початковий стан
+            selectedSquare = null;
+            clearHighlights();
+            renderBoard();
+            if (gameMode === 'player-vs-bot' && playerColor === 'black') {
+                setTimeout(makeBotMove, 500); // Якщо гравець чорний, бот робить перший хід
+            }
+        }
+
+        // Обробники кнопок головного меню
+        playTwoPlayersBtn.addEventListener('click', () => {
+            gameMode = 'player-vs-player';
+            showPage(gameContainer);
+            initializeGame();
+        });
+
+        playVsBotBtn.addEventListener('click', () => {
+            showPage(difficultySelection);
+            // Завантаження збережених налаштувань для бота
+            const savedDifficulty = localStorage.getItem('chess_botDifficulty');
+            if (savedDifficulty) {
+                botDifficulty = savedDifficulty;
+            }
+            const savedPlayerColor = localStorage.getItem('chess_playerColor');
+            if (savedPlayerColor) {
+                playerColorSelect.value = savedPlayerColor;
+                playerColor = savedPlayerColor;
+            }
+        });
+
+        settingsBtn.addEventListener('click', () => {
+            showPage(settingsPage);
+            // Завантаження поточних налаштувань у форму
+            const savedPlayerColor = localStorage.getItem('chess_playerColor');
+            if (savedPlayerColor) {
+                playerColorSelect.value = savedPlayerColor;
+            }
+        });
+
+        helpBtn.addEventListener('click', () => {
+            showPage(helpPage);
+        });
+
+        // Обробники кнопок вибору складності
+        difficultyButtons.forEach(button => {
+            button.addEventListener('click', (event) => {
+                botDifficulty = event.target.dataset.difficulty;
+                localStorage.setItem('chess_botDifficulty', botDifficulty); // Зберігаємо складність
+                gameMode = 'player-vs-bot';
+                showPage(gameContainer);
+                initializeGame();
+            });
+        });
+        backToMainMenuFromDifficulty.addEventListener('click', () => showPage(mainMenu));
+
+        // Обробники кнопок налаштувань
+        saveSettingsBtn.addEventListener('click', () => {
+            playerColor = playerColorSelect.value;
+            localStorage.setItem('chess_playerColor', playerColor);
+            alert('Налаштування збережено!');
+        });
+        backToMainMenuFromSettings.addEventListener('click', () => showPage(mainMenu));
+
+        // Обробник для кнопки "Назад до меню" з довідки
+        backToMainMenuFromHelp.addEventListener('click', () => showPage(mainMenu));
+
+        // Обробники кнопок керування грою
+        undoMoveButton.addEventListener('click', () => {
+            if (game.history().length > 0) {
+                game.undo();
+                // Якщо це гра з ботом і ми відмінили хід гравця, відмінити ще й хід бота
+                if (gameMode === 'player-vs-bot' && game.history().length > 0 && game.turn() !== (playerColor === 'white' ? 'w' : 'b')) {
+                    game.undo();
+                }
+                renderBoard();
+                clearHighlights();
+                selectedSquare = null;
+            }
+        });
+
+        resetGameButton.addEventListener('click', () => {
+            initializeGame();
+        });
+
+        backToMenuFromGame.addEventListener('click', () => showPage(mainMenu));
+
+        // Ініціалізація при завантаженні сторінки
+        document.addEventListener('DOMContentLoaded', () => {
+            showPage(mainMenu); // Показуємо головне меню при завантаженні
+        });
+    </script>
+</body>
+  </html>
